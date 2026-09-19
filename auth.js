@@ -1,0 +1,1 @@
+(function(){var p=location.pathname.split('/').pop();if(p==='login.html')return;try{if(localStorage.getItem('cpa_auth')==='1')return}catch(e){}document.documentElement.style.display='none';location.replace('login.html')})();

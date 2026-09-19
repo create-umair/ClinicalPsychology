@@ -2,7 +2,8 @@ const $=s=>document.querySelector(s),app=$('#app');
 const LS=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
 const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const bank=Q.map((q,i)=>({id:i+1,subj:q[0],topic:q[1],diff:q[2],q:q[3],o:q[4],a:q[5],e:q[6]}));
+const rot=(o,a,r)=>{const rest=o.filter((_,k)=>k!==a);rest.splice(r,0,o[a]);return rest};
+const bank=Q.map((q,i)=>({id:i+1,subj:q[0],topic:q[1],diff:q[2],q:q[3],o:rot(q[4],q[5],i%4),a:i%4,e:q[6]}));
 const subjects=[...new Set(bank.map(q=>q.subj))],topics=[...new Set(bank.map(q=>q.topic))];
 const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 // Shuffle answer order while keeping the correct-answer index mapped correctly
@@ -55,17 +56,17 @@ V.home=()=>{
 };
 
 V.notes=p=>{
-  app.innerHTML=`<h1>Study notes</h1><p class=row><span>Use Print notes, then choose “Save as PDF” in your browser.</span><button data-dl>Download all notes (.txt)</button></p>`+NOTES.map((n,i)=>`<details class=note ${p!==''&&+p===i?'open':''}><summary data-view=${i}>${n.t}</summary><h3>Overview</h3><p>${n.o}</p><h3>Key concepts</h3><ul>${n.k.map(x=>`<li>${x}</li>`).join('')}</ul><h3>Exam summary</h3><p>${n.x}</p><h3>Common misconception</h3><p>${n.m}</p><p class=row><button data-print=${i}>Print notes</button><button data-prac="${n.s}">Practise ${n.s} MCQs</button></p></details>`).join('');
+  app.innerHTML=`<h1>Study notes</h1><p class=row><span>Use Print notes, then choose “Save as PDF” in your browser.</span><button data-dl>Download all notes (.txt)</button></p>`+NOTES.map((n,i)=>`<details class=note ${p!==''&&+p===i?'open':''}><summary data-view=${i}>${n.t}</summary><h3>Overview</h3><p>${n.o}</p><h3>Key concepts</h3><ul>${n.k.map(x=>`<li>${x}</li>`).join('')}</ul>${n.a?'<h3>Clinical applications</h3><p>'+n.a+'</p>':''}<h3>Exam summary</h3><p>${n.x}</p><h3>Common misconception</h3><p>${n.m}</p><p class=row><button data-print=${i}>Print notes</button><button data-prac="${n.s}">Practise ${n.s} MCQs</button></p></details>`).join('');
   if(p!=='')markViewed(+p);
 };
 function markViewed(i){if(i<0||i>=NOTES.length)return;st.viewed=st.viewed.filter(x=>x!==i);st.viewed.push(i);save()}
 
 V.practice=()=>{
   const opt=(a,all)=>`<option value="">${all}</option>`+a.map(x=>`<option>${x}</option>`).join('');
-  app.innerHTML=`<h1>MCQ practice</h1><section class=card><div class=form><label>Subject<select id=fs>${opt(subjects,'All subjects')}</select></label><label>Topic<select id=ft>${opt(topics,'Any topic')}</select></label><label>Difficulty<select id=fd>${opt(['Easy','Medium'],'Any difficulty')}</select></label><label>Questions<select id=fc><option value=5>5</option><option value=10>10</option><option value=0>All matching</option></select></label><label>Mode<select id=fm><option value=practice>Practice (instant feedback)</option><option value=exam>Exam (answers at the end)</option><option value=timed>Timed (1 minute per question)</option><option value=weak>Weak areas (previously missed)</option></select></label></div><label><input type=checkbox id=fa checked> Shuffle answer order</label><p id=msg role=status class=meta></p><button class=pri data-start>Start quiz</button></section>`;
+  app.innerHTML=`<h1>MCQ practice</h1><section class=card><div class=form><label>Subject<select id=fs>${opt(subjects,'All subjects')}</select></label><label>Topic<select id=ft>${opt(topics,'Any topic')}</select></label><label>Difficulty<select id=fd>${opt(['Easy','Medium','Hard'],'Any difficulty')}</select></label><label>Questions<select id=fc><option value=5>5</option><option value=10>10</option><option value=0>All matching</option></select></label><label>Mode<select id=fm><option value=practice>Practice (instant feedback)</option><option value=exam>Exam (answers at the end)</option><option value=timed>Timed (1 minute per question)</option><option value=weak>Weak areas (previously missed)</option></select></label></div><label><input type=checkbox id=fa checked> Shuffle answer order</label><p id=msg role=status class=meta></p><button class=pri data-start>Start quiz</button></section>`;
 };
 
-const MOCKS=[{name:'Comprehensive Clinical Psychology',subs:null,n:20,mins:20},{name:'Psychopathology and Anxiety',subs:['Psychopathology','Anxiety & OCD'],n:12,mins:12},{name:'Assessment and Psychotherapy',subs:['Assessment','Psychotherapy'],n:12,mins:12},{name:'Research Methods and Ethics',subs:['Research & Statistics','Ethics'],n:10,mins:10}];
+const MOCKS=[{name:'Comprehensive Clinical Psychology',subs:null,n:20,mins:20},{name:'Psychopathology and Anxiety',subs:['Psychopathology','Anxiety & OCD'],n:12,mins:12},{name:'Assessment and Psychotherapy',subs:['Assessment','Psychotherapy'],n:12,mins:12},{name:'Research Methods and Ethics',subs:['Research & Statistics','Ethics'],n:10,mins:10},{name:'Foundations, Health and Development',subs:['Clinical Foundations','Health Psychology','Neuropsychology & Development'],n:12,mins:12}];
 V.mock=()=>{
   app.innerHTML=`<h1>Mock exams</h1><p>Timed tests drawn at random from the question bank. Answers and explanations appear after you submit, and the test submits itself at 0:00.</p>${S&&!S.done&&S.mode==='mock'?'<p class=notice>A test is in progress. <button class=pri data-resume>Resume test</button></p>':''}<p><label><input type=checkbox id=fa checked> Shuffle answer order</label></p><div class=modules>${MOCKS.map((m,i)=>{const n=Math.min(m.n,bank.filter(q=>!m.subs||m.subs.includes(q.subj)).length);return `<article class=card><h2>${m.name}</h2><p>${n} questions, ${n===m.n?m.mins:n} minutes</p><button class=pri data-mock=${i}>Start exam</button></article>`}).join('')}</div><p class=meta>Scores are educational practice results only.</p>`;
 };
@@ -152,7 +153,7 @@ app.addEventListener('click',e=>{
   else if(d.prac!=null)start('practice',bank.filter(q=>q.subj===d.prac),0,true);
   else if(d.print!=null){const el=b.closest('details');el.open=true;el.classList.add('pr');window.print();el.classList.remove('pr')}
   else if(d.dl!=null){
-    const t=NOTES.map(n=>n.t+'\n\nOverview: '+n.o+'\n\nKey concepts:\n- '+n.k.join('\n- ')+'\n\nExam summary: '+n.x+'\nCommon misconception: '+n.m).join('\n\n----------\n\n');
+    const t=NOTES.map(n=>n.t+'\n\nOverview: '+n.o+'\n\nKey concepts:\n- '+n.k.join('\n- ')+(n.a?'\n\nClinical applications: '+n.a:'')+'\n\nExam summary: '+n.x+'\nCommon misconception: '+n.m).join('\n\n----------\n\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));a.download='clinical-psychology-notes.txt';a.click();
   }
   else if(d.c!=null){
@@ -167,4 +168,5 @@ $('#sf').addEventListener('submit',e=>{e.preventDefault();const q=$('#sq').value
 $('#mt').onclick=()=>{const o=$('#nav').classList.toggle('open');$('#mt').setAttribute('aria-expanded',o)};
 document.documentElement.dataset.theme=LS('theme',matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
 $('#tt').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;SV('theme',t)};
+$('#lo').onclick=()=>{try{localStorage.removeItem('cpa_auth')}catch(e){}location.href='login.html'};
 route();

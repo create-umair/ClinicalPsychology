@@ -81,3 +81,6 @@ footer{border-top:1px solid var(--ln);margin-top:2rem}
 .fcols{display:grid;grid-template-columns:2fr 1fr 1fr;gap:1.5rem}
 .fcols a{display:block}
 @media(max-width:700px){.hero{grid-template-columns:1fr;padding:1.5rem 1rem}.fcols{grid-template-columns:1fr}}
+.login{max-width:420px;margin:3rem auto;padding:1rem}
+.login label{display:flex;flex-direction:column;gap:.2rem;margin-bottom:.8rem}
+.login input{padding:.5rem;border:1px solid var(--ln);border-radius:6px;background:var(--c);color:var(--ink);font:inherit}

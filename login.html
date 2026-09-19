@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in – Clinical Psychology Academy</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="login">
+<form id="lf" class="card">
+<h1>Sign in</h1>
+<p>Enter your username and password to open Clinical Psychology Academy.</p>
+<label>Username<input id="u" autocomplete="username" required></label>
+<label>Password<input id="pw" type="password" autocomplete="current-password" required></label>
+<p id="err" role="alert" class="meta"></p>
+<button class="pri">Sign in</button>
+</form>
+</main>
+<script>
+const H='f3b810040f37dbab637f6d47c89723408ae28e92966005db7c9f37c3198afc50';
+document.getElementById('lf').addEventListener('submit',async e=>{
+  e.preventDefault();const err=document.getElementById('err');
+  if(!(window.crypto&&crypto.subtle)){err.textContent='Open the site over https (GitHub Pages) to sign in.';return}
+  const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(document.getElementById('u').value.trim()+':'+document.getElementById('pw').value));
+  const h=[...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  if(h===H){try{localStorage.setItem('cpa_auth','1')}catch(x){}location.replace('index.html')}
+  else err.textContent='Incorrect username or password.';
+});
+</script>
+</body>
+</html>
