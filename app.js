@@ -8,7 +8,7 @@ const subjects=[...new Set(bank.map(q=>q.subj))],topics=[...new Set(bank.map(q=>
 const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 // Shuffle answer order while keeping the correct-answer index mapped correctly
 const prep=(q,sh)=>{if(!sh)return{...q};const s=shuf(q.o.map((t,i)=>({t,c:i===q.a})));return{...q,o:s.map(x=>x.t),a:s.findIndex(x=>x.c)}};
-const def=()=>({ans:0,ok:0,wrong:[],book:[],tests:[],viewed:[],by:{}});
+const def=()=>({known:[],ans:0,ok:0,wrong:[],book:[],tests:[],viewed:[],by:{}});
 let st=Object.assign(def(),LS('cpa',{})),S=null,timer=null,card={list:[],i:0,flip:false};
 const save=()=>SV('cpa',st),go=h=>V[h](),base=()=>V[document.body.dataset.v]();
 const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
@@ -86,15 +86,21 @@ V.result=()=>{
   app.innerHTML=`<section class=card><h1>${S.mode==='mock'?'Test complete':'Quiz complete'}</h1><p class=big>Score: ${r.ok} / ${n} — ${r.pct}%</p><p>Correct: ${r.ok}. Incorrect: ${r.bad}. Unanswered: ${r.skip}. Time used: ${fmt(r.time)}.</p><h2>Performance by subject</h2><ul>${rows(r.by)}</ul><h2>Performance by topic</h2><ul>${rows(r.top)}</ul><h2>Recommended revision</h2><p>${rev||'Every subject is at 70% or above. Keep practising.'}</p><div class=row><button class=pri data-retake>Retake</button><a class=btn href="dashboard.html">Back to dashboard</a></div><p class=meta>These are educational practice scores only. They do not indicate professional competence or clinical qualification.</p></section><h2>Review answers</h2>`+S.qs.map((q,i)=>{const a=S.ans[i];return `<article class=card><p><b>${i+1}. ${q.q}</b></p><p>Your answer: ${a==null?'Not answered':q.o[a]} ${a==null?'':a===q.a?'(correct)':'(incorrect)'}</p><p>Correct answer: ${q.o[q.a]}</p><p class=ex>${q.e}</p></article>`}).join('');
 };
 
+let fl={cat:'',stat:'',rev:false,list:null,i:0,flip:false};
+const CARDS=()=>GLOSS.map((g,i)=>({id:'g'+i,cat:'Glossary terms',f:g[0],b:g[1],t:1})).concat(bank.map(q=>({id:'q'+q.id,cat:q.subj,f:q.q,b:q.o[q.a]+'. '+q.e})));
+const deck=()=>CARDS().filter(c=>(!fl.cat||c.cat===fl.cat)&&(!fl.stat||(fl.stat==='known')===st.known.includes(c.id)));
 V.cards=()=>{
-  if(!card.list.length)card.list=GLOSS.slice();
-  const c=card.list[card.i],n=card.list.length;
-  app.innerHTML=`<h1>Flashcards</h1><p>Card ${card.i+1} of ${n}. ${card.flip?'Definition':'Term'}: press the card to flip.</p><progress value=${card.i+1} max=${n}></progress><button class=fc data-c=flip aria-live=polite>${card.flip?c[1]:'<b>'+c[0]+'</b>'}</button><div class=row><button data-c=prev>Previous</button><button data-c=next>Next</button><button data-c=shuf>Shuffle</button></div>`;
+  if(!fl.list)fl.list=deck();
+  const L=fl.list,n=L.length,c=L[fl.i],sw=c&&c.t&&fl.rev,front=c?(sw?c.b:c.f):'',back=c?(sw?c.f:c.b):'';
+  const sel=(v,x)=>v===x?' selected':'';
+  app.innerHTML=`<h1>Flashcards</h1><p>${st.known.length} of ${CARDS().length} cards marked as known.</p><div class=form><label>Deck<select id=cc><option value="">All cards</option>${['Glossary terms',...subjects].map(x=>`<option${sel(fl.cat,x)}>${x}</option>`).join('')}</select></label><label>Show<select id=cs><option value="">All cards</option><option value=learn${sel(fl.stat,'learn')}>Still learning</option><option value=known${sel(fl.stat,'known')}>Known</option></select></label></div><p><label><input type=checkbox id=cr${fl.rev?' checked':''}> Show the definition first (glossary cards)</label></p>`+(n?`<p>Card ${fl.i+1} of ${n}: ${c.cat}</p><progress value=${fl.i+1} max=${n}></progress><button class=fc data-c=flip aria-live=polite>${fl.flip?back:'<b>'+front+'</b>'}</button><p class=meta>Press the card or the space bar to flip. Use the left and right arrow keys to move.</p><div class=row><button data-c=prev>Previous</button><button data-c=next>Next</button><button data-c=shuf>Shuffle</button></div><div class=row><button data-c=learn>Still learning</button><button class=pri data-c=know>I know this</button></div>`:'<p class=notice>No cards match this filter. Change the deck or the filter above.</p>');
 };
+app.addEventListener('change',e=>{if(['cc','cs','cr'].includes(e.target.id)){fl.cat=$('#cc').value;fl.stat=$('#cs').value;fl.rev=$('#cr').checked;fl.list=deck();fl.i=0;fl.flip=false;V.cards()}});
+document.addEventListener('keydown',e=>{if(document.body.dataset.v!=='cards'||/INPUT|SELECT/.test(e.target.tagName)||!fl.list||!fl.list.length)return;const k=e.key;if(k==='ArrowRight'||k==='ArrowLeft'){e.preventDefault();fl.flip=false;fl.i=(fl.i+(k==='ArrowRight'?1:-1)+fl.list.length)%fl.list.length;V.cards()}else if(k===' '&&!e.target.closest('button')){e.preventDefault();fl.flip=!fl.flip;V.cards()}});
 
 V.gloss=()=>{
-  app.innerHTML=`<h1>Glossary</h1><label>Search terms <input id=gq type=search></label><dl id=gl></dl>`;
-  const f=()=>{const q=$('#gq').value.toLowerCase();$('#gl').innerHTML=GLOSS.filter(g=>(g[0]+g[1]).toLowerCase().includes(q)).map(g=>`<dt><b>${g[0]}</b></dt><dd>${g[1]}</dd>`).join('')||'<p>No matching terms. Try a shorter search.</p>'};
+  app.innerHTML=`<h1>Glossary</h1><label>Search terms <input id=gq type=search></label><p id=gc class=meta></p><dl id=gl></dl>`;
+  const f=()=>{const q=$('#gq').value.toLowerCase(),l=GLOSS.slice().sort((a,b)=>a[0].localeCompare(b[0])).filter(g=>(g[0]+g[1]).toLowerCase().includes(q));$('#gc').textContent=l.length+' of '+GLOSS.length+' terms';$('#gl').innerHTML=l.map(g=>`<dt><b>${g[0]}</b></dt><dd>${g[1]}</dd>`).join('')||'<p>No matching terms. Try a shorter search.</p>'};
   $('#gq').oninput=f;f();
 };
 
@@ -107,7 +113,7 @@ V.search=q=>{
 V.dash=()=>{
   const best=st.tests.length?Math.max(...st.tests.map(t=>t.pct)):null;
   const weak=Object.entries(st.by).map(([k,v])=>[k,pct(v[0],v[1]),v[1]]).filter(x=>x[1]<70).sort((a,b)=>a[1]-b[1]);
-  app.innerHTML=`<h1>Your progress</h1><div class=stats>${[['Questions answered',st.ans],['Correct',st.ok],['Accuracy',st.ans?pct(st.ok,st.ans)+'%':'–'],['Mock tests completed',st.tests.length],['Best mock score',best==null?'–':best+'%'],['Notes viewed',st.viewed.length],['Bookmarked questions',st.book.length]].map(([a,b])=>`<div class=stat><b>${b}</b>${a}</div>`).join('')}</div>
+  app.innerHTML=`<h1>Your progress</h1><div class=stats>${[['Questions answered',st.ans],['Correct',st.ok],['Accuracy',st.ans?pct(st.ok,st.ans)+'%':'–'],['Mock tests completed',st.tests.length],['Best mock score',best==null?'–':best+'%'],['Notes viewed',st.viewed.length],['Bookmarked questions',st.book.length],['Flashcards known',st.known.length]].map(([a,b])=>`<div class=stat><b>${b}</b>${a}</div>`).join('')}</div>
   <h2>Weak areas</h2>${weak.length?`<ul>${weak.map(w=>`<li>${w[0]}: ${w[1]}% over ${w[2]} answers. <a href="study.html?n=${ni(w[0])}">Revise notes</a></li>`).join('')}</ul>`:'<p>No weak areas yet. Answer questions to see where to focus.</p>'}<p>Missed questions saved: ${st.wrong.length}. Use “Weak areas” mode in <a href="practice.html">MCQ practice</a>.</p>
   <h2>Recent tests</h2>${st.tests.length?`<ul>${st.tests.slice(-5).reverse().map(t=>`<li>${t.date}: ${t.ok}/${t.n} (${t.pct}%)</li>`).join('')}</ul>`:'<p>No mock tests yet. <a href="mock.html">Take a mock test</a>.</p>'}
   <h2>Continue studying</h2>${st.viewed.length?`<ul>${st.viewed.slice(-3).reverse().map(i=>`<li><a href="study.html?n=${i}">${NOTES[i].t}</a></li>`).join('')}</ul>`:'<p>Open a note and it will appear here.</p>'}
@@ -126,7 +132,7 @@ V.about=()=>{
 function route(){
   const v=document.body.dataset.v,p=new URLSearchParams(location.search);
   document.querySelectorAll('nav a').forEach(x=>x.dataset.v===v?x.setAttribute('aria-current','page'):x.removeAttribute('aria-current'));
-  V[v](v==='notes'?(p.get('n')||''):v==='search'?(p.get('q')||''):'');
+  (V[v]||V.home)(v==='notes'?(p.get('n')||''):v==='search'?(p.get('q')||''):'');
 }
 
 app.addEventListener('click',e=>{
@@ -157,16 +163,21 @@ app.addEventListener('click',e=>{
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));a.download='clinical-psychology-notes.txt';a.click();
   }
   else if(d.c!=null){
-    if(d.c==='flip')card.flip=!card.flip;
-    else{card.flip=false;if(d.c==='shuf'){card.list=shuf(card.list);card.i=0}else card.i=(card.i+(d.c==='next'?1:-1)+card.list.length)%card.list.length}
+    const n=fl.list.length;
+    if(d.c==='flip')fl.flip=!fl.flip;
+    else if(d.c==='shuf'){fl.list=shuf(fl.list);fl.i=0;fl.flip=false}
+    else{
+      if(d.c==='know'||d.c==='learn'){const id=fl.list[fl.i].id,k=st.known.indexOf(id);if(d.c==='know'&&k<0)st.known.push(id);if(d.c==='learn'&&k>=0)st.known.splice(k,1);save()}
+      fl.flip=false;fl.i=(fl.i+(d.c==='prev'?-1:1)+n)%n;
+    }
     V.cards();
   }
   else if(d.reset!=null&&confirm('Delete all saved progress on this device?')){st=def();save();V.dash()}
 });
 
-$('#sf').addEventListener('submit',e=>{e.preventDefault();const q=$('#sq').value.trim();if(q)location.href='search.html?q='+encodeURIComponent(q)});
-$('#mt').onclick=()=>{const o=$('#nav').classList.toggle('open');$('#mt').setAttribute('aria-expanded',o)};
+$('#sf')?.addEventListener('submit',e=>{e.preventDefault();const q=$('#sq').value.trim();if(q)location.href='search.html?q='+encodeURIComponent(q)});
+if($('#mt'))$('#mt').onclick=()=>{const o=$('#nav').classList.toggle('open');$('#mt').setAttribute('aria-expanded',o)};
 document.documentElement.dataset.theme=LS('theme',matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
-$('#tt').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;SV('theme',t)};
-$('#lo').onclick=()=>{try{localStorage.removeItem('cpa_auth')}catch(e){}location.href='login.html'};
-route();
+if($('#tt'))$('#tt').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;SV('theme',t)};
+if($('#lo'))$('#lo').onclick=()=>{try{localStorage.removeItem('cpa_auth')}catch(e){}location.href='login.html'};
+try{route()}catch(e){app.innerHTML='<p class=notice>This page failed to load ('+esc(e.message)+'). Refresh with Ctrl+Shift+R. If it still fails, re-upload every file.</p>'}
